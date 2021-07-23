@@ -1,0 +1,9 @@
+---
+
+- name: Restart service MySQL
+  become: yes
+  service: 
+    name: mysql
+    state: restarted
+  listen: "Restart service MySQL"
+  when: hostvars[inventory_hostname].mysql_slave_of is defined

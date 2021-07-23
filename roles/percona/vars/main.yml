@@ -1,0 +1,50 @@
+---
+
+Percona_deb_repo: "https://repo.percona.com/apt/percona-release_latest.{{ ansible_lsb.codename }}_all.deb"
+
+Percona_rpm_repo: "https://repo.percona.com/yum/percona-release-latest.noarch.rpm"
+Percona_key: "https://www.percona.com/downloads/percona-release/RPM-GPG-KEY-percona"
+
+
+Percona_Debian_preresquites:
+  - python-mysqldb
+  - python-pycurl
+  - python3
+  - python3-mysqldb
+  - gnupg2
+  - curl 
+  
+Percona_Debian:
+  - percona-server-server
+  - percona-toolkit
+  - percona-xtrabackup-80
+
+Percona_RHEL_Family_preresquites:
+  - python3
+  - python3-PyMySQL
+  - gnupg2
+  - curl 
+
+Percona_RHEL_Family:
+  - percona-server-server-8.0*
+  - percona-server-client-8.0*
+  - percona-server-devel-8.0*
+  - percona-toolkit
+  - percona-xtrabackup-80
+
+percona_repo_version: ps80
+
+server_id: "{{ inventory_hostname | ansibleHostnameNumber }}"
+
+increment_offset: "{{ inventory_hostname | mysqlParityOffset }}"
+
+socket_dir: "{% if ansible_distribution == 'Debian' %}/var/run/mysqld/mysqld.sock{% else %}/var/lib/mysql/mysql.sock{% endif %}"
+
+base_mb: "mb{% if mono_server is defined %}{{ mono_server }}{% else %}{% for host in groups['webservers'] %}{% if hostvars[host].mediboard_master is defined %}{{ hostvars[host]['mediboard_master'] }}{% endif %}{% endfor %}{% endif %}"
+
+droit_base_med: "{% if base_medicamenteuse == 'bcb' %}/bcb1.*:ALL/bcb2.*:ALL{% elif base_medicamenteuse == 'compendium' %}/compendium.*:ALL{% elif base_medicamenteuse == 'besco' %}/besco1.*:ALL/besco2.*:ALL{% endif %}"
+
+############################ Variables à mettre dans le Vault ######################################################
+
+rep_passwd: root
+mysql_root_passwd: eFDVv8f54s56

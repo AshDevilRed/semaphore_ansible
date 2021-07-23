@@ -1,0 +1,19 @@
+---
+
+- name: Tests des flux nécessaires sur les serveurs IHM/TRT Mediboard
+  hosts: webservers:monoservers
+  gather_facts: yes
+  tasks:
+    - import_role:
+        name: flux
+        tasks_from: flux_frontend
+      when: execution_lock is not defined
+
+- name: Tests des flux nécessaires sur les serveurs SGBD Mediboard
+  hosts: dbservers:monoservers
+  gather_facts: yes
+  tasks:
+    - import_role:
+        name: flux
+        tasks_from: flux_backend
+      when: execution_lock is not defined

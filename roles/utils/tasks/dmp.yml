@@ -1,0 +1,43 @@
+---
+
+- name: Installation de pdftk (Debian)
+  become: yes
+  apt:
+    name: "pdftk"
+    state: latest
+    update_cache: yes
+  when: ansible_distribution == "Debian"
+
+- name: Ajout du premier dépot YUM pour pdftk (RedHat Family 7)
+  become: yes
+  yum_repository:
+    name: robert-gcj-epel-7
+    description: EPEL YUM repo for pdftk
+    baseurl: https://download.copr.fedorainfracloud.org/results/robert/gcj/epel-7-$basearch/
+    skip_if_unavailable: yes
+    gpgcheck: yes
+    gpgkey: https://download.copr.fedorainfracloud.org/results/robert/gcj/pubkey.gpg
+    repo_gpgcheck: no
+    enabled: yes
+  when: ansible_os_family == 'RedHat' and ansible_distribution_major_version|int <= 7 
+
+- name: Ajout du deuxième dépot YUM pour pdftk (RedHat Family 7)
+  become: yes
+  yum_repository:
+    name: robert-pdftk-epel-7
+    description: EPEL YUM repo for pdftk
+    baseurl: https://download.copr.fedorainfracloud.org/results/robert/pdftk/epel-7-$basearch/
+    skip_if_unavailable: yes
+    gpgcheck: yes
+    gpgkey: https://download.copr.fedorainfracloud.org/results/robert/pdftk/pubkey.gpg
+    repo_gpgcheck: no
+    enabled: yes
+  when: ansible_os_family == 'RedHat' and ansible_distribution_major_version|int <= 7 
+
+- name: Installation de pdftk (RedHat Family 7)
+  become: yes
+  yum:
+    name: "pdftk"
+    state: latest
+    update_cache: yes
+  when: ansible_os_family == 'RedHat' and ansible_distribution_major_version|int <= 7

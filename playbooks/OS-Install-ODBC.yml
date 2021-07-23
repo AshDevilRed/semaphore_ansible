@@ -1,0 +1,13 @@
+---
+
+# Ce playbook sert à l'installation d'un client ODBC avec Instant Client pour se connecter
+# et faire des requêtes sur un AS400
+# /!\ ATTENTION /!\ Ce playbook ne fonctionne QUE pour Debian et ça sera TOUJOURS le cas
+# Il sert juste pour maintenir la liaison avec eCap et donc suivra les avancées des infras 
+
+- name: Installation d'ODBC
+  hosts: processing_servers
+  gather_facts: yes
+  roles:
+    - { role: as400-odbc, when: ansible_distribution == "Debian" }
+  

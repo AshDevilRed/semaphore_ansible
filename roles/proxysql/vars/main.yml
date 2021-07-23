@@ -1,0 +1,19 @@
+---
+
+deb_psql_preresquites:
+  - python-mysqldb
+  - python-pycurl
+  - python3
+  - python3-mysqldb
+  - mariadb-client
+
+psql:
+    user: user
+    mdp: user #a envoyer dans le vault
+    monitor:
+        user: monitor
+        mdp: monitor #a envoyer dans le vault
+
+mysql_site:
+    user: mb_user
+    mdp: mb_user #a envoyer dans le vault

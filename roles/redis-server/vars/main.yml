@@ -1,0 +1,8 @@
+---
+
+redis_dir: "{% if ansible_distribution == 'Debian' %}/etc/redis/conf.d{% else %}/etc/redis.conf.d{% endif %}"
+
+redis_conf: "{% if ansible_distribution == 'Debian' %}/etc/redis/redis.conf{% else %}/etc/redis.conf{% endif %}"
+
+redis_logrotate: "{% if ansible_distribution == 'Debian' %}redis-server{% else %}redis{% endif %}"
+  

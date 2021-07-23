@@ -1,0 +1,8 @@
+---
+
+- name: Restart service Fail2ban
+  become: yes
+  service: 
+    name: "fail2ban" 
+    state: restarted
+  listen: "Restart service fail2ban"

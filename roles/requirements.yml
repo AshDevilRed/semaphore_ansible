@@ -1,0 +1,4 @@
+---
+
+- name: ansible-oracle-instantclient
+  src: https://github.com/azavea/ansible-oracle-instantclient

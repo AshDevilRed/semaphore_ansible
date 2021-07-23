@@ -1,0 +1,48 @@
+#!/usr/bin/python3
+# Python script for prefailover
+# Update ProxySQL mysql_servers table
+# 1 argument (ORC_FAILED_HOST)
+# Copyright (C) 2020 OpenXtrem 
+
+import sys
+import os
+import datetime
+import MySQLdb
+
+#Voir pour la récupération des variables du hooks
+OldMaster=str(sys.argv[1])
+PROXYSQL_HOST=[{% for _host in groups["proxysql"] -%}
+"{{ hostvars[_host]["ansible_default_ipv4"]["address"] }}"{{ "," if not loop.last else ""}}
+{%- endfor %}]
+
+def writeIn(txt, error):
+    path = "{{ orch_log }}"
+
+    if error:
+        path = "{{ orch_error_log }}"
+
+    with open(path, 'a') as log:
+        log.write(txt)
+
+def prefailover(PROXYSQL_HOST):
+    global OldMaster
+
+    try:
+        conn = MySQLdb.connect(PROXYSQL_HOST,'{{ psql.user }}','{{ psql.mdp }}','monitor',port=6032)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM mysql_servers WHERE hostname=%s;",(OldMaster,))
+        cursor.execute("INSERT INTO mysql_servers(hostgroup_id,hostname,port,status) values (9000,%s,3306,'OFFLINE_SOFT');",(OldMaster,))
+        #cursor.execute("LOAD MYSQL SERVERS TO RUNTIME;")
+        #cursor.execute("SAVE MYSQL SERVERS TO DISK;")
+        conn.commit()
+        conn.close()
+        txt = datetime.datetime.today().strftime("%A %d %B %Y à %H:%M:%S")
+        txt = "Le " + str(txt) + " : " + "Prefailover réussi. (envoi vers " + PROXYSQL_HOST + ")\n"
+        writeIn(txt,False)
+    except MySQLdb.OperationalError as e:
+        txt = datetime.datetime.today().strftime("%A %d %B %Y à %H:%M:%S")
+        txt = "Le " + str(txt) + " : " + str(e) + "\n"
+        writeIn(txt,True)
+
+for i in range(len(PROXYSQL_HOST)):
+    prefailover(PROXYSQL_HOST[i])

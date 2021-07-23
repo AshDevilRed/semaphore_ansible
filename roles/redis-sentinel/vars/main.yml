@@ -1,0 +1,18 @@
+---
+
+redis_install_deb:
+  - redis-server
+  - redis-tools
+
+redis_dir: "{% if ansible_distribution == 'Debian' %}/etc/redis/conf.d{% else %}/etc/redis.conf.d{% endif %}"
+
+redis_sentinel_conf: "{% if ansible_distribution == 'Debian' %}/etc/redis/sentinel.conf{% else %}/etc/redis-sentinel.conf{% endif %}"
+
+# Temps de failover / Temps de timeout
+down_time: "5000"
+
+failover_timeout: "180000"
+
+# Port par defaut, possibilité de les changer avec des variables locales
+redis_port: "6379"
+redis_sentinel_port: "26379"

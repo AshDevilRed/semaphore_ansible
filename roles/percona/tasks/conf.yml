@@ -1,0 +1,172 @@
+---
+
+############################### Démarrage/Activation de Percona #######################################
+
+- name: Activation du service MySQL au démarrage (RedHat Family)
+  become: yes
+  service:
+    name: mysqld
+    enabled: yes
+  when: ( ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" )
+
+- name: Activation du service MySQL au démarrage (Debian 10)
+  become: yes
+  service:
+    name: mysql
+    enabled: yes
+  when: ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" )
+
+#################################### Configuration de Percona ###########################################
+
+- name: Création du fichier de credentials
+  become: yes
+  template:
+    src: templates/.my.cnf.j2
+    dest: "/root/.my.cnf"
+    mode: '0600'
+
+- name: Création du répértoire de log MySQL (RedHat Family)
+  become: yes
+  file:
+    path: /var/log/mysql
+    state: directory
+    owner: mysql
+    group: mysql
+    mode: '0700'
+  when: ansible_os_family == "RedHat"
+
+- name: Création du répértoire de socket mysql (RedHat Family)
+  become: yes
+  file:
+    path: /var/run/mysqld
+    state: directory
+    owner: mysql
+    group: mysql
+    mode: '0700'
+  when: ansible_os_family == "RedHat"
+
+- name: Création du répértoire de configuration MySQL
+  become: yes
+  file:
+    path: /etc/mysql/percona-server.conf.d
+    state: directory
+    owner: mysql
+    group: mysql
+    mode: '0744'
+  
+- name: Configuration des limites (Debian)
+  become: yes
+  template:
+    src: templates/limits_Deb.j2
+    dest: "/etc/security/limits.conf"
+    mode: '0644'
+  when: ansible_distribution == "Debian"
+
+- name: Configuration de common-session (Debian)
+  become: yes
+  template:
+    src: templates/common-sess.j2
+    dest: "/etc/pam.d/common-session"
+    mode: '0644'
+  when: ansible_distribution == "Debian"
+
+- name: Configuration de common-session-noninteractive (Debian)
+  become: yes
+  template:
+    src: templates/common-sess-nonint.j2
+    dest: "/etc/pam.d/common-session-noninteractive"
+    mode: '0644'
+  when: ansible_distribution == "Debian"
+
+- name: Modification de sysctl.conf (Redhat Family)
+  become: yes
+  template:
+    src: templates/sysctl.j2
+    dest: "/etc/sysctl.conf"
+    mode: '0644'
+  when: ansible_os_family == "RedHat"
+
+- name: Configuration des limites (RedHat Family)
+  become: yes
+  template:
+    src: templates/limits_Cent.j2
+    dest: "/etc/security/limits.conf"
+    mode: '0644'
+  when: ansible_os_family == "RedHat"
+
+- name: Configuration du fichier de surcharge des limites (RedHat Family)
+  become: yes
+  template:
+    src: templates/nproc.j2
+    dest: "/etc/security/limits.d/20-nproc.conf"
+    mode: '0644'
+  when: ansible_os_family == "RedHat"
+
+- name: Création du répertoire de surcharge des limites de fichiers pour MySQL (RedHat Family)
+  become: yes
+  file:
+    path: "/etc/systemd/system/percona.service.d"
+    state: directory
+    owner: "root"
+    group: "root"
+    mode: '0755'
+  when: ansible_os_family == "RedHat"
+
+- name: Surcharge des limites d'ouvertures de fichier au niveau de MySQL (RedHat Family)
+  become: yes
+  template:
+    src: "templates/systemctl_limits_percona_rhel_family.conf.j2"
+    dest: "/etc/systemd/system/percona.service.d/limits.conf"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  when: ansible_os_family == "RedHat"
+
+- name: "Copie du fichier de configuration my.cnf "
+  become: yes
+  template:
+    src: templates/my.cnf.j2
+    dest: /etc/my.cnf
+    owner: mysql
+    group: mysql
+    mode: '0644'
+  register: cnfMySQL
+
+- name: Modification du fichier mysqld.cnf
+  become: yes
+  template:
+    src: templates/mysqld.cnf.j2
+    dest: /etc/mysql/percona-server.conf.d/mysqld.cnf
+    mode: '0644'
+  register: cnfPerc
+
+- name: Rechargement de systemctl pour incorporer la modification du service (RedHat Family)
+  become: yes
+  systemd:
+    daemon_reload: yes
+  when: ansible_os_family == "RedHat"  
+
+- name: Création du répertoire query-digests
+  become: yes
+  file:
+    path: '/var/log/mysql/query_digests'
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Déployement de la rotation des logs Percona
+  become: yes
+  template:
+    src: templates/log_rotate.j2
+    dest: "/etc/logrotate.d/mysql-server"
+    mode: '0644'
+
+- name: Restart service MySQL
+  become: yes
+  service: 
+    name: mysql
+    state: restarted
+  when: cnfPerc.changed or cnfMySQL.changed
+
+- include: db.yml

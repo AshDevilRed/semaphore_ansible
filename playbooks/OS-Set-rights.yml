@@ -1,0 +1,7 @@
+---
+
+- name: Installation de Mediboard
+  hosts: webservers:monoservers
+  gather_facts: yes
+  roles:
+    - { role: droits, when: execution_lock is not defined }

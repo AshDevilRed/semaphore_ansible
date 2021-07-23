@@ -1,0 +1,11 @@
+mediboard_path: "/var/www/html/"
+
+mediboard_user: "mediboard"
+
+master_path: "/var/"
+
+mysql_tmp_dir: "/tmp"
+
+gc_maxlifetime: "3600"
+
+prompt_message: "ATTENTION : Le prompt est vide !"

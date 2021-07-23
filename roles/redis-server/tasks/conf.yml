@@ -1,0 +1,30 @@
+---
+
+- name: Création du répertoire de surcharge redis
+  become: yes
+  file:
+    path: "{{ redis_dir }}"
+    state: directory
+    mode: 0755
+  notify: redis-restart
+
+- name: Configuration de redis
+  become: yes
+  template:
+    src: templates/redis.j2
+    dest: "{{ redis_conf }}"
+  notify: redis-restart
+
+- name: Configuration de la surcharge redis
+  become: yes
+  template:
+    src: templates/mediboard_redis.j2
+    dest: "{{ redis_dir }}/mediboard_redis.conf"
+    mode: 0644
+  notify: redis-restart
+
+- name: Déployement de la rotation des logs Redis
+  become: yes
+  template:
+    src: templates/log_rotate.j2
+    dest: /etc/logrotate.d/{{ redis_logrotate }}

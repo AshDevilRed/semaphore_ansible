@@ -1,0 +1,84 @@
+---
+
+- name: Installation de fail2ban (Debian)
+  become: yes
+  apt:
+    name: fail2ban
+    state: latest
+  when: ansible_distribution == "Debian"
+
+- name: Installation de fail2ban (RedHat Family)
+  become: yes
+  yum:
+    name: fail2ban
+    state: latest
+  when: ansible_os_family == "RedHat"
+
+- name: Vérification de l'existence de jail.local
+  become: yes
+  stat:
+    path: "/etc/fail2ban/jail.local"
+  register: fail2ban_jail_local
+
+- name: Copie du fichier jail.conf en jail.local
+  become: yes
+  copy:
+    src: /etc/fail2ban/jail.conf
+    dest: /etc/fail2ban/jail.local
+    remote_src: yes
+    mode: '0644'
+  notify: "Restart service fail2ban"
+  when: fail2ban_jail_local.stat.exists != true
+
+- name: Modification du temps de banissement
+  become: yes
+  replace: 
+    dest: "/etc/fail2ban/jail.local" 
+    regexp: "^bantime.*" 
+    replace: "bantime = {{ bantime }}"
+  notify: "Restart service fail2ban"
+
+- name: Modification du nombre de tentatives
+  become: yes
+  replace: 
+    dest: "/etc/fail2ban/jail.local" 
+    regexp: "^maxretry.*"
+    replace: "maxretry = {{ maxretry }}"
+  notify: "Restart service fail2ban"
+
+- name: Modification du temps entre les tentatives
+  become: yes
+  replace: 
+    dest: "/etc/fail2ban/jail.local" 
+    regexp: "^findtime.*"
+    replace: "findtime = {{ findtime }}"
+  notify: "Restart service fail2ban"
+
+- name: Vérification de l'activation sshd
+  become: yes
+  lineinfile:
+    name: "/etc/fail2ban/jail.local"
+    line: "#sshd activated"
+    state: present
+  check_mode: yes
+  register: sshd_activated
+
+- name: debug
+  debug:
+    msg: "{{ sshd_activated }}"
+
+- name: Activation du jail sshd
+  become: yes
+  lineinfile:
+    dest: "/etc/fail2ban/jail.local"
+    insertafter: "^\\[sshd"
+    line: "enabled = true\n#sshd activated"
+  when: sshd_activated is changed
+  
+
+- name: Activation et lancement de Fail2ban
+  become: yes
+  service:
+    name: fail2ban
+    state: restarted
+    enabled: true

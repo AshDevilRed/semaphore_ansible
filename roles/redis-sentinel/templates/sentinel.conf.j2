@@ -1,0 +1,23 @@
+port {{ redis_sentinel_port }}
+#bind {{ ansible_host }}
+
+supervised systemd
+
+logfile "/var/log/redis/sentinel.log"
+dir "/etc/redis"
+
+# Pour les problèmes de NAT utiliser plutôt "ansible_default_ipv4"
+{% for _host in groups['dbservers'] | sort %}
+{% if 'redis_primary' in hostvars[_host] %}
+#sentinel monitor mymaster {{ hostvars[_host]['ansible_default_ipv4']['address'] }} {{ redis_port }} 2
+{% endif %}
+{% endfor %}
+
+{% for _host in groups['dbservers'] | sort %}
+{% if 'redis_primary' in hostvars[_host] %}
+sentinel monitor mymaster {{ hostvars[_host]['ansible_host'] }} {{ redis_port }} 2
+{% endif %}
+{% endfor %}
+
+sentinel down-after-milliseconds mymaster {{ down_time }}
+sentinel failover-timeout mymaster {{ failover_timeout }}

@@ -1,0 +1,8 @@
+# {{ ansible_managed }}
+# ==========================
+
+Timeout 3600
+protected-mode no
+bind 127.0.0.1 "{% if mono_server is not defined %}{{ ansible_host }}{% endif %}"
+
+{% if hostvars[inventory_hostname].redis_slave_of is defined %}slaveof {{ redis_slave_of }} 6379{% endif %}

@@ -1,0 +1,13 @@
+# {{ ansible_managed }}
+# ==========================
+
+# Default limit for number of user's processes to prevent
+# accidental fork bombs.
+# See rhbz #432903 for reasoning.
+
+*          soft    nproc     4096
+root       soft    nproc     unlimited
+* soft nproc 40960
+* hard nproc 40960
+* soft nofile 40960
+* hard nofile 40960

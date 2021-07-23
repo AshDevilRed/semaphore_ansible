@@ -1,0 +1,43 @@
+---
+
+- name: Only for gather info
+  hosts: all
+  gather_facts: yes
+
+- import_playbook: OS-Install-utils.yml
+
+- name: Percona
+  hosts: dbservers
+  gather_facts: no
+  roles:
+    - { role: percona, when execution_lock is not defined }
+
+- name: ProxySQL
+  hosts: webservers
+  gather_facts: no
+  roles:
+    - { role: proxysql, when execution_lock is not defined }
+
+- name: Orchestrator
+  hosts: dbservers
+  gather_facts: no
+  roles:
+    - { role: orchestrator, when execution_lock is not defined }
+
+# - name: redis-server
+#   hosts: dbservers
+#   gather_facts: no
+#   roles:
+#     - { role: redis-server, when execution_lock is not defined }
+  
+# - name: redis-sentinel
+#   hosts: dbservers:webservers
+#   gather_facts: no
+#   roles:
+#     - { role: redis-sentinel, when execution_lock is not defined }
+
+# - name: hardening
+#   hosts: all
+#   gather_facts: no
+#   roles:
+#     - { role: hardening, when execution_lock is not defined }

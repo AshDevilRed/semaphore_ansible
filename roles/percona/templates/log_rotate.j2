@@ -1,0 +1,27 @@
+# {{ ansible_managed }}
+# ==========================
+
+/var/log/mysql/mysql-slow.log /var/log/mysql/error.log {
+    create 660 mysql mysql
+    notifempty
+	daily
+    rotate 7
+    missingok
+    compress
+	delaycompress
+    prerotate
+        date=$(date +'%Y%m%d')
+		pt-query-digest                                               /var/log/mysql/mysql-slow.log >> /var/log/mysql/query_digests/query-report-$date.10ms.txt
+        pt-query-digest --filter 'return $event->{Query_time} >= 0.1' /var/log/mysql/mysql-slow.log >> /var/log/mysql/query_digests/query-report-$date.100ms.txt
+        pt-query-digest --filter 'return $event->{Query_time} >= 1.0' /var/log/mysql/mysql-slow.log >> /var/log/mysql/query_digests/query-report-$date.1000ms.txt
+        pt-query-digest --filter 'return $event->{Query_time} >= 10'  /var/log/mysql/mysql-slow.log >> /var/log/mysql/query_digests/query-report-$date.10000ms.txt
+    endscript
+    postrotate
+	# just if mysqld is really running
+	if test -x /usr/bin/mysqladmin && \
+	   /usr/bin/mysqladmin ping &>/dev/null
+	then
+	   /usr/bin/mysqladmin flush-logs
+	fi
+    endscript
+}

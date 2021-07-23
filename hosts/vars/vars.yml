@@ -1,0 +1,60 @@
+##############   Fichier de variable client   ################
+#                                                            #
+# Toutes les variables doivent avoir des valeurs (cohérentes)#
+#                                                            #
+##############################################################
+
+vagrant_environment: "yes"
+
+###########
+## Vault ##
+###########
+
+mysql_root_passwd: "gf6543e54"
+
+rep_passwd: "test"
+
+mediboard_passwd: "test"
+
+readonly_passwd: "test"
+
+ext_passwd: "test"
+
+psql:
+    user: "user"
+    mdp: "user"
+    monitor:
+        user: "monitor"
+        mdp: "monitor"
+
+##########
+# DMP
+##########
+
+#############
+## Système ##
+#############
+
+
+use_ntp: 0
+
+############
+## Réseau ##
+############
+
+
+###########
+## Autre ##
+###########
+
+
+#########
+## SQL ##
+#########
+
+datadir: "/var/lib/mysql"
+
+################
+## AUTRES
+################
+

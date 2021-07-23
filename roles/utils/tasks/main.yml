@@ -1,0 +1,131 @@
+---
+
+- include: "repo.yml"
+
+- include: "ntp.yml"
+  when: use_ntp is defined and use_ntp != 0
+
+- name: VAGRANT SEULEMENT désactivation du pare-feu (RHEL)
+  become: yes
+  service: 
+    name: firewalld
+    state: stopped
+    enabled: False
+  when: vagrant_environment is defined and ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+
+- name: Ajout du fichier hosts
+  become: yes
+  template:
+    src: templates/hosts.j2
+    dest: /etc/hosts
+
+- name: Modification du swap
+  become: yes
+  template:
+    src: templates/sysctl.j2
+    dest: /etc/sysctl.d/10-sysctl-ox.conf
+  notify:
+    - swapoff
+    - swapon
+
+- name: Désactivation des repo CD (Debian)
+  become: yes
+  lineinfile:
+    path: /etc/apt/sources.list
+    regexp: "^deb cdrom"
+    state: absent
+  when: ansible_distribution == "Debian"
+
+- name: Désactivation de SELinux (RedHat Family)
+  become: yes
+  selinux:
+    state: disabled
+  when: ansible_os_family == "RedHat"
+
+- name: Installation des paquets essentiels à toutes machines (Debian)
+  become: yes
+  apt:
+    name: "{{ Packages_Debian }}"
+    state: latest
+    update_cache: yes
+  when: ansible_distribution == "Debian"
+
+- name: Installation des paquets essentiels à toutes machines (CentOS 7)
+  become: yes
+  yum:
+    name: "{{ Packages_CentOS_7 }}"
+    state: latest
+    update_cache: yes
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+- name: Installation des paquets essentiels à toutes machines (RedHat 8 Family)
+  become: yes
+  dnf:
+    name: "{{ Packages_RHEL_CentOS_8 }}"
+    state: latest
+    update_cache: yes
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+
+- name: Installation de wkhtmltopdf (RedHat 8 Family)
+  become: yes
+  dnf:
+    name: "https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-1/wkhtmltox-0.12.6-1.centos8.x86_64.rpm"
+    state: latest
+    update_cache: yes
+    disable_gpg_check: yes
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+
+- name: Installation du module pexpect
+  become: yes
+  pip:
+    name: pexpect
+    state: latest
+
+- name: Création du répertoire de log Mediboard
+  become: yes
+  file:
+    path: '/var/log/mediboard'
+    state: directory
+    owner: "{{ mediboard_user }}"
+    group: "root"
+    mode: '0755'
+
+- name: Récupération de la version courante d'Atop
+  shell: "atop -V | cut -d ' ' -f2"
+  register: atop_version
+
+- name: Modification du script de démarrage d'Atop (si version < 2.4.0)
+  become: yes
+  lineinfile:
+    path: /usr/share/atop/atop.daily
+    regexp: "^INTERVAL="
+    line: "INTERVAL={{ atop_default_interval }}"
+  when: atop_version.stdout is version("2.4.0", operator='<', strict=True)
+
+- name: Modification de l'intervalle de rafraichissement d'Atop (si version >= 2.4.0) (Debian)
+  become: yes
+  lineinfile:
+    path: /etc/default/atop
+    regexp: "^LOGINTERVAL="
+    line: "LOGINTERVAL={{ atop_default_interval }}"
+  when: ansible_distribution == "Debian" and atop_version.stdout is version("2.4.0", operator='>=')
+
+- name: Modification de l'intervalle de rafraichissement d'Atop (si version >= 2.4.0) (RedHat Family)
+  become: yes
+  lineinfile:
+    path: /etc/sysconfig/atop
+    regexp: "^LOGINTERVAL="
+    line: "LOGINTERVAL={{ atop_default_interval }}"
+  when: ansible_os_family == "RedHat" and atop_version.stdout is version_compare("2.4.0", operator='>=')
+
+- name: (re)Démarrage de Atop en tâche de fond
+  become: yes
+  service:
+    name: atop
+    state: restarted
+
+- name: Activation de Atop au démarrage du système
+  become: yes
+  service:
+    name: atop
+    enabled: yes

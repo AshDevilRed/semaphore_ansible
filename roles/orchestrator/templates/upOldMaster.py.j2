@@ -1,0 +1,105 @@
+#!/usr/bin/python3
+# Python Script to upOldMaster
+# Update ProxySQL mysql_servers table
+# Saisi utilisateur du nouveau master
+# Copyright (C) 2020 OpenXtrem 
+
+import sys
+import os
+import datetime
+import MySQLdb
+import warnings
+warnings.filterwarnings("ignore", category = MySQLdb.Warning)
+
+PROXYSQL_HOST=[{% for _host in groups["proxysql"] -%}
+"{{ hostvars[_host]["ansible_default_ipv4"]["address"] }}"{{ "," if not loop.last else ""}}
+{%- endfor %}]
+
+#Test etats processus
+def testService():
+    print("\nMySQL service : ")
+    stateMySQL = os.system('systemctl is-active mysql.service')
+    print("Orchestrator service : ")
+    stateOrchestrator = os.system('systemctl is-active orchestrator.service')
+    print("\n")
+
+    if(stateMySQL == 768) and (stateOrchestrator == 768 ):
+        os.system('systemctl start mysql.service orchestrator.service')
+    elif(stateMySQL == 768) and (stateOrchestrator == 0 ):
+        os.system('systemctl start mysql.service')
+    elif(stateMySQL == 0) and (stateOrchestrator == 768 ):
+        os.system('systemctl start orchestrator.service')
+    else:
+        print("Orchestrator et MySQL sont activés !\n")
+
+
+#Fonction d'écriture dans les logs et error log
+def writeIn(txt, error):
+    path = "{{ orch_log }}"
+
+    if error:
+        path = "{{ orch_error_log }}"
+
+    with open(path, 'a') as log:
+        log.write(txt)
+
+#Fonction pour changer le master
+def changeMaster():
+    NewMaster=input("\nSaisir le hostname du nouveau Master :\n")
+    txt = datetime.datetime.today()
+    txt = "Le " + str(txt) + " : "
+    txt2 = "NewMaster saisi." + "(" + NewMaster  + ")\n"
+    writeIn(txt, False)
+    writeIn(txt2, False)
+
+    try:
+        localconn = MySQLdb.connect('127.0.0.1','root','{{ mysql_root_passwd }}',port=3306)
+        localcurs = localconn.cursor()
+        localcurs.execute("SET GLOBAL read_only=true;")
+        localcurs.execute("CHANGE MASTER TO MASTER_HOST = %s,MASTER_PORT = 3306, MASTER_USER = 'replic_user', MASTER_PASSWORD = '{{ rep_passwd }}', MASTER_AUTO_POSITION = 1;",(NewMaster,))
+        localcurs.execute("START SLAVE;")
+        localconn.commit()
+        localconn.close()
+        txt = "Nouveau Master configuré. Vous êtes son esclave !"
+        writeIn(txt, False)
+    except MySQLdb.OperationalError as e:
+        print("Impossible de se connecter à la base de donnée locale. Le Master ne sera pas changé.\n")
+        txt = datetime.datetime.today().strftime("%A %d %B %Y à %H:%M:%S")
+        txt = "Le " + str(txt) +" : " + str(e)
+        writeIn(txt, True)
+
+#Fonction pour mettre à jour les proxySQL
+def upOldMaster(PROXYSQL_HOST):
+    try:
+        conn = MySQLdb.connect(PROXYSQL_HOST,'{{ psql.user }}','{{ psql.mdp }}','monitor',port=6032)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO mysql_servers(hostgroup_id,hostname,port,status) values (1,%s,3306,'ONLINE');",(old,))
+        #cursor.execute("LOAD MYSQL SERVERS TO RUNTIME;")
+        #cursor.execute("SAVE MYSQL SERVERS TO DISK;")
+        conn.commit()
+        conn.close()
+        txt = datetime.datetime.today().strftime("%A %d %B %Y à %H:%M:%S")
+        txt = "Le " + str(txt) + " : " + "OldMaster ajouté au groupe de lecture. (envoi vers " + PROXYSQL_HOST + "\n"
+        writeIn(txt,False)
+    except MySQLdb.OperationalError as e:
+        if e.args[0] == 1045:
+            print("Contraite d'insertion unique non respecté! " + PROXYSQL_HOST + "\n")
+            txt = datetime.datetime.today().strftime("%A %d %B %Y à %H:%M:%S")
+            txt = "Le " + str(txt) + " : " + str(e) + "\n"
+            writeIn(txt,True)
+        if e.args[0] == 2002:
+            print("Impossible de se connecter à ProxySQL (" + PROXYSQL_HOST + ")\n")
+            txt = datetime.datetime.today().strftime("%A %d %B %Y à %H:%M:%S")
+            txt = "Le " + str(txt) + " : " + str(e) + "\n"
+            writeIn(txt,True)
+            
+#Check de l'état des service / start au cas ou
+testService()
+
+#Set RO / Change Master / Start slave 
+changeMaster()
+
+old = input("Saisir le hostname du serveur à rajouter dans le groupe de lecture :\n")
+#Envoi à Psql
+for i in range(len(PROXYSQL_HOST)):
+    upOldMaster(PROXYSQL_HOST[i])

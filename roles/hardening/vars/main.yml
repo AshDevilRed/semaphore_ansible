@@ -1,0 +1,53 @@
+---
+
+######################### Fail2Ban ##########################
+
+# Par défaut on bloquera 1heure un utilisateur après 5 tentatives échoués en 10 minutes.
+
+# Finir par "m" pour minutes, ou laisser vide pour les secondes
+bantime: "60m"
+
+maxretry: "5"
+
+# L'hôte est banni si il fait plus de "maxretry" tentatives dans le temps "findtime"
+findtime: "10m"
+
+########################### Lynis ###########################
+
+lynis_Debian_preresquites:
+  - apt-transport-https
+
+lynis_RHEL_Family_preresquites:
+  - ca-certificates 
+  - curl 
+  - nss 
+  - openssl
+
+lynis:
+  rpm:
+    key: https://packages.cisofy.com/keys/cisofy-software-rpms-public.key
+    repo: https://packages.cisofy.com/community/lynis/rpm/
+  deb:
+    key: https://packages.cisofy.com/keys/cisofy-software-public.key
+    repo: https://packages.cisofy.com/community/lynis/deb/
+
+line:
+  to_delete:
+    - "RED"
+    - "NC="
+    - "bold="
+    - "----------------------------"
+    - "Warnings/,/Suggestions"
+    - "Hardening index"
+    - "lynis.log"
+    - "mesg n"
+
+oneline: "{{ line.to_delete[0] }}|{{ line.to_delete[1] }}|{{ line.to_delete[2] }}|{{ line.to_delete[3] }}|{{ line.to_delete[4] }}|{{ line.to_delete[5] }}|{{ line.to_delete[6] }}|{{ line.to_delete[7] }}"
+
+# Valeurs par défaut possiblement écrasable
+lynis_autorized_user:
+  - "{{ ansible_user }}"
+
+
+# Valeur par défaut "On", peut être écraser par n'importe quoi en local pour passer la tâche
+lynis_first_try: "On"

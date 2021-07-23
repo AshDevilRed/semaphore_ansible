@@ -1,0 +1,74 @@
+---
+
+########################## Paquets / Dépôts ###################################
+
+orch_version: "3.2.3"
+
+deb_orch_preresquites:
+    - jq
+
+rpm_orch_preresquites:
+    - jq
+
+deb_orch:
+    orch:
+        url: https://github.com/openark/orchestrator/releases/download/v{{ orch_version}}/orchestrator_{{ orch_version}}_amd64.deb
+        checksum: e1e5cb51973c45500c5de7f487378d7dc5a478d468850e9d228d1907e3fe5773
+    orch-cli:
+        url: https://github.com/openark/orchestrator/releases/download/v{{ orch_version}}/orchestrator-cli_{{ orch_version}}_amd64.deb
+        checksum: f4b6962fb87811350f63e1ee6132b74eeb9a56c710a5bb9d7d43bae4d342e354
+    orch-client:
+        url: https://github.com/openark/orchestrator/releases/download/v{{ orch_version}}/orchestrator-client_{{ orch_version}}_amd64.deb
+        checksum: b63d5ee473684e69760b65db91bdd83daffbee2b75fb19a2d7a5746e178bc943
+
+rpm_orch:
+    orch:
+        url: https://github.com/openark/orchestrator/releases/download/v{{ orch_version}}/orchestrator-{{ orch_version}}-1.x86_64.rpm
+        checksum: 191b6cb6be6c4b2231a56c154b7544d7190c2e27f0604ca46297ecad02000733
+    orch-cli:
+        url: https://github.com/openark/orchestrator/releases/download/v{{ orch_version}}/orchestrator-cli-{{ orch_version}}-1.x86_64.rpm
+        checksum: 0fb8073ea77dad06deda9b056ee0c1c9d55956cc1900801d89543926f7b0cc6b
+    orch-client:
+        url: https://github.com/openark/orchestrator/releases/download/v{{ orch_version}}/orchestrator-client-{{ orch_version}}-1.x86_64.rpm
+        checksum: 80b196f130f7db91f7d00bc301aafa5c8129a5fc26cf9eae6659fbc9618d928b
+
+rpm_orch_install:
+    - "orchestrator-{{ orch_version}}-1.x86_64.rpm"
+    - "orchestrator-cli-{{ orch_version}}-1.x86_64.rpm"
+    - "orchestrator-client-{{ orch_version}}-1.x86_64.rpm"
+
+############## Variables Percona / Orchestrator / Proxysql ######################
+
+orch_log: /var/log/orchestrator/orch.log
+
+orch_error_log: /var/log/orchestrator/error.log
+
+psql:
+    user: admin2
+    mdp: admin2 #a mettre dans le vault
+    monitor:
+        user: monitor
+        mdp: monitor #a mettre dans le vault
+
+orchestrator: 
+    topologyUser: orchestrator
+    user: orchestrator
+    password: orchestrator #a mettre dans le vault
+    topologyPassword: orchestrator #a mettre dans le vault
+
+server_id: "{{ inventory_hostname | ansibleHostnameNumber }}"
+
+orch_alias: dbservers
+
+############################ Variables à mettre dans le Vault ######################################################
+
+rep_passwd: root
+mysql_root_passwd: eFDVv8f54s56
+
+# psql:
+#     mdp:
+
+# orchestrator:
+#     password:
+#     topologyPassword:
+   

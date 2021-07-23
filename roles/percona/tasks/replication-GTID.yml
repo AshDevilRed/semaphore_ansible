@@ -1,0 +1,93 @@
+---
+
+########################## Création utilisateurs de réplication ########################################
+
+- name: Création de l'utilisateur de replication
+  become: yes
+  no_log: true
+  mysql_user:
+    login_user: "root"
+    login_password: "{{ mysql_root_passwd }}"
+    name: "replic_user"
+    password: "{{ rep_passwd }}"
+    host: "{{ hostvars[item]['ansible_hostname'] }}"
+    priv: "*.*:REPLICATION SLAVE"
+    sql_log_bin : no
+    state: present
+  with_items: 
+          - "{{ groups['dbservers'] }}"
+
+############################# Lancement de la réplication ###############################################
+
+# - name: Vérification du status du slave (Debian 10)
+#   become: yes
+#   no_log: no
+#   mysql_replication:
+#     login_user: "root"
+#     login_password: "{{ mysql_root_passwd }}"
+#     mode: getslave
+#   register: slave
+#   when: hostvars[inventory_hostname].mysql_slave_of is defined and ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" )
+
+# TODO Workaround à enlever en 2.10 (https://github.com/ansible-collections/community.mysql/pull/71) enlever les slave.stdou dans les when en dessous aussi
+- name: Vérification du status du slave
+  become: yes
+  no_log: true
+  shell: mysql -u root -p"{{ mysql_root_passwd }}" -e "show replica status\G" 2>/dev/null | grep Replica_IO_Running | awk {'print $2'}
+  register: slave
+  changed_when: true
+  when: hostvars[inventory_hostname].mysql_slave_of is defined
+
+- name: Redémarrage de MySQL
+  become: yes
+  service: 
+    name: mysql
+    state: restarted
+  when: hostvars[inventory_hostname].mysql_slave_of is defined and (( "stdout" in slave and slave.stdout == "no" ) or ("stdout" not in slave) or ("stdout" in slave and slave.stdout == ""))
+  #(( slave.Is_Slave is defined and not slave.Is_Slave ) or ( slave.Is_Slave is not defined and slave is failed )) and hostvars[inventory_hostname].mysql_slave_of is defined
+
+# Faire une issue sur le Github Ansible pour la compatibilité avec Percona-server (master_use_gtid)
+#TODO corriger le when en 2.10 (lié au workaround verif slave) et dé-commenter "master_use_gtid"
+- name: Configuration du slave
+  become: yes
+  ignore_errors: yes
+  no_log: true
+  mysql_replication:
+    login_user: "root"
+    login_password: "{{ mysql_root_passwd }}"
+    mode: changemaster
+    master_host: "{{ hostvars[inventory_hostname].mysql_slave_of }}"
+    master_user: replic_user
+    master_password: "{{ rep_passwd }}"
+    #master_use_gtid: current_pos
+  when: hostvars[inventory_hostname].mysql_slave_of is defined and (( "stdout" in slave and slave.stdout == "no" ) or ("stdout" not in slave) or ("stdout" in slave and slave.stdout == ""))
+  #(( slave.Is_Slave is defined and not slave.Is_Slave ) or ( slave.Is_Slave is not defined and slave is failed )) and hostvars[inventory_hostname].mysql_slave_of is defined
+
+#TODO Supprimer si "master_use_gtid" est fonctionnel
+- name: COMMANDE | Configuration de la replication (GTID)
+  become: yes
+  ignore_errors: yes
+  no_log: true
+  command: mysql -u root -p"{{ mysql_root_passwd }}" -e "CHANGE MASTER TO MASTER_HOST = '{{ hostvars[inventory_hostname].mysql_slave_of }}',MASTER_PORT = 3306,MASTER_USER = 'replic_user',MASTER_PASSWORD = '{{ rep_passwd }}',MASTER_AUTO_POSITION = 1;";
+  changed_when: true
+  when: hostvars[inventory_hostname].mysql_slave_of is defined and (( "stdout" in slave and slave.stdout == "no" ) or ("stdout" not in slave) or ("stdout" in slave and slave.stdout == ""))
+  #(( slave.Is_Slave is defined and not slave.Is_Slave ) or ( slave.Is_Slave is not defined and slave is failed )) and hostvars[inventory_hostname].mysql_slave_of is defined
+
+#TODO corriger le when en 2.10 (lié au workaround verif slave)
+- name: Lancement de la réplication
+  become: yes
+  no_log: true
+  mysql_replication:
+    login_user: "root"
+    login_password: "{{ mysql_root_passwd }}"
+    mode: startslave
+  when: hostvars[inventory_hostname].mysql_slave_of is defined and (( "stdout" in slave and slave.stdout == "no" ) or ("stdout" not in slave) or ("stdout" in slave and slave.stdout == ""))
+  #(( slave.Is_Slave is defined and not slave.Is_Slave ) or ( slave.Is_Slave is not defined and slave is failed )) and hostvars[inventory_hostname].mysql_slave_of is defined
+
+- name: COMMANDE | Supprimer le read_only
+  become: yes
+  ignore_errors: yes
+  no_log: true
+  command: mysql -u root -p"{{mysql_root_passwd}}" -e "SET @@GLOBAL.read_only = OFF;";
+  changed_when: true
+  when: root_pass_changed.stat.exists == False

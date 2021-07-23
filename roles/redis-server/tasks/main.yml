@@ -1,0 +1,31 @@
+---
+
+- name: Installation de redis-server (Debian)
+  become: yes
+  apt:
+    name: redis-server
+    state: latest
+  when: ansible_distribution == "Debian"
+
+- name: Installation de redis-server (RedHat Family)
+  become: yes
+  yum:
+    name: redis
+    state: latest
+  when: ansible_os_family == "RedHat"
+
+- name: Activation de redis-server au démarrage du système (Debian)
+  become: yes
+  service:
+    name: redis-server
+    enabled: yes
+  when: ansible_distribution == "Debian"
+
+- name: Activation de redis-server au démarrage du système (RedHat)
+  become: yes
+  service:
+    name: redis
+    enabled: yes
+  when: ansible_os_family == "RedHat"
+
+- include: conf.yml

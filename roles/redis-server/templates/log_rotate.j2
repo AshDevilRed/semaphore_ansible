@@ -1,0 +1,12 @@
+# {{ ansible_managed }}
+# ==========================
+
+/var/log/redis/redis-server.log {
+    weekly
+    rotate 10
+    copytruncate
+    delaycompress
+    compress
+    notifempty
+    missingok
+}

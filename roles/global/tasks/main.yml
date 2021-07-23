@@ -1,0 +1,8 @@
+---
+- include_vars:
+    dir: "{{ inventory_dir }}/vars/"
+    depth: 2
+    extensions:
+      - yml
+      - yaml
+  when: vagrant_environment is not defined

@@ -1,0 +1,121 @@
+---
+
+Sury_key: "https://packages.sury.org/php/apt.gpg"
+EPEL_key: "/etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-{{ ansible_distribution_major_version }}"
+EPEL_RedHat8_key: "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8"
+Remi_key_rhel8: "https://rpms.remirepo.net/RPM-GPG-KEY-remi2018"
+Remi_key_rhel7: "https://rpms.remirepo.net/RPM-GPG-KEY-remi"
+
+Sury_repo: "deb https://packages.sury.org/php/ {{ ansible_distribution_release }} main"
+
+EPEL_rpm: "https://dl.fedoraproject.org/pub/epel/epel-release-latest-{{ ansible_distribution_major_version }}.noarch.rpm"
+
+Remi_repo: "http://rpms.remirepo.net/enterprise/{{ ansible_distribution_major_version }}/php{{ php_Cent }}/{{ ansible_architecture }}/"
+Remi_mirror: "http://cdn.remirepo.net/enterprise/{{ ansible_distribution_major_version }}/php{{ PHP }}/mirror"
+
+Remi_safe_repo: "http://rpms.remirepo.net/enterprise/{{ ansible_distribution_major_version }}/safe/{{ ansible_architecture }}/"
+Remi_safe_mirror: "http://cdn.remirepo.net/enterprise/{{ ansible_distribution_major_version }}/safe/mirror"
+
+Remi_CentOS8_rpm_repo: "https://rpms.remirepo.net/enterprise/remi-release-8.rpm"
+
+NtpClient_Packages:
+  - ntp
+  - ntpdate
+
+Chrony_Package:
+  - chrony
+
+Packages_Debian:
+  - telnet
+  - vim
+  - ca-certificates
+  - make
+  - htop
+  - subversion
+  - rsync
+  - unzip
+  - libzip-dev
+  - cifs-utils
+  - lsb-release
+  - wget
+  - smem
+  - tar
+  - curl
+  - screen
+  - openssl
+  - supervisor
+  - iotop
+  - sysstat
+  - net-tools
+  - python-pip
+  - python3-pip
+  - bmon
+  - wkhtmltopdf
+  - zip
+  - atop
+  - pv
+  - git
+  - gpg
+
+Packages_CentOS_7:
+  - yum-utils
+  - telnet
+  - vim
+  - make
+  - htop
+  - subversion
+  - rsync
+  - unzip
+  - libzip-devel
+  - cifs-utils
+  - redhat-lsb-core
+  - ca-certificates
+  - wget
+  - smem
+  - tar
+  - curl
+  - screen
+  - openssl
+  - supervisor
+  - iotop
+  - sysstat
+  - net-tools
+  - python-pip
+  - bmon
+  - wkhtmltopdf
+  - zip
+  - atop
+  - pv
+  - git
+  - policycoreutils-python
+
+Packages_RHEL_CentOS_8:
+  - dnf-utils
+  - telnet
+  - vim
+  - make
+  - htop
+  - subversion
+  - rsync
+  - unzip
+  - libzip-devel
+  - cifs-utils
+  - redhat-lsb-core
+  - ca-certificates
+  - wget
+  - tar
+  - curl
+  - screen
+  - openssl
+  - supervisor
+  - iotop
+  - sysstat
+  - net-tools
+  - python3-pip
+  - zip
+  - atop
+  - pv
+  - git
+  - python3
+
+atop_default_interval: "60"

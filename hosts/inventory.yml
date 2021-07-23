@@ -1,0 +1,11 @@
+[webservers]
+webservers01 ansible_host=172.16.1.155 ansible_user=ansible
+webservers02 ansible_host=172.16.1.156 ansible_user=ansible
+
+[proxysql:children]
+webservers
+
+[dbservers]
+dbservers01 ansible_host=172.16.1.152 ansible_user=ansible
+dbservers02 ansible_host=172.16.1.153 ansible_user=ansible mysql_slave_of=172.16.1.152
+dbservers03 ansible_host=172.16.1.154 ansible_user=ansible mysql_slave_of=172.16.1.152

@@ -1,0 +1,34 @@
+---
+################################## Gestion des Log nginx ###########################################
+
+- name: Création du répértoire de log ProxySQL
+  become: yes
+  file:
+    path: /var/log/proxysql
+    state: directory
+    owner: proxysql
+    group: proxysql
+
+################################## Fichier de Configuration nginx ###########################################
+
+- name: Activation du service ProxySQL au démarrage
+  become: yes
+  service:
+    name: proxysql
+    enabled: yes
+
+- name: Ajout du fichier de configuration ProxySQL
+  become: yes
+  template:
+    src: templates/proxysql.cnf.j2
+    dest: /etc/proxysql.cnf
+    owner: proxysql
+    group: proxysql
+    mode: 0640
+
+- name: Démarrage du service proxysql
+  become: yes
+  service: 
+    name: proxysql
+    state: restarted
+

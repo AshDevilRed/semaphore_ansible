@@ -1,0 +1,57 @@
+#!/usr/bin/python3
+# Python Script after ProxySQL down
+# Update ProxySQL mysql_servers table
+# Saisi utilisateur du Master
+# Copyright (C) 2020 OpenXtrem
+
+import sys
+import os
+import datetime
+import MySQLdb
+
+PROXYSQL_HOST=[{% for _host in groups["proxysql"] -%}
+"{{ hostvars[_host]["ansible_default_ipv4"]["address"] }}"{{ "," if not loop.last else ""}}
+{%- endfor %}]
+
+def writeIn(txt, error):
+    path = "{{ orch_log }}"
+
+    if error:
+        path = "{{ orch_error_log }}"
+
+    with open(path, 'a') as log:
+        log.write(txt)
+
+def ifDownPsql(PROXYSQL_HOST):
+    global Master
+
+    txt = datetime.datetime.today().strftime("%A %d %B %Y à %H:%M:%S")
+    txt = "Le " + str(txt) + " : " + "Prefailover réussi. (envoi vers " + PROXYSQL_HOST + ")\n"
+    writeIn(txt,False)
+
+    try:
+        conn = MySQLdb.connect(PROXYSQL_HOST,'{{ psql.user }}','{{ psql.mdp }}','monitor',port=6032)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO mysql_servers(hostgroup_id,hostname,port,status) values (0,%s,3306,'ONLINE');",(Master,))
+        #cursor.execute("LOAD MYSQL SERVERS TO RUNTIME;")
+        #cursor.execute("SAVE MYSQL SERVERS TO DISK;")
+        conn.commit()
+        conn.close()
+        txt = datetime.datetime.today().strftime("%A %d %B %Y à %H:%M:%S")
+        txt = "Le " + str(txt) + " : " + "Master ajouté au groupe d'écriture. (envoi vers " + PROXYSQL_HOST + "\n"
+        writeIn(txt,False)
+    except MySQLdb.OperationalError as e:
+        if e.args[0] == 1045:
+            print("Contraite d'insertion unique non respecté! " + PROXYSQL_HOST + "\n")
+            txt = datetime.datetime.today().strftime("%A %d %B %Y à %H:%M:%S")
+            txt = "Le " + str(txt) + " : " + str(e) + "\n"
+            writeIn(txt,True)
+        if e.args[0] == 2002:
+            print("Impossible de se connecter à ProxySQL (" + PROXYSQL_HOST + ")\n")
+            txt = datetime.datetime.today().strftime("%A %d %B %Y à %H:%M:%S")
+            txt = "Le " + str(txt) + " : " + str(e) + "\n"
+            writeIn(txt,True)
+
+Master=input("\nSaisir le hostname du Master à ajouter dans le groupe d'écriture:\n")
+for i in range(len(PROXYSQL_HOST)):
+    ifDownPsql(PROXYSQL_HOST[i])

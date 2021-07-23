@@ -1,0 +1,7 @@
+---
+
+- name: Installation des besoins communs à toutes les machines
+  hosts: all
+  gather_facts: yes
+  roles:
+    - { role: utils, when: execution_lock is not defined }

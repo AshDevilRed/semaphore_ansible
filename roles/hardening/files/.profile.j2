@@ -1,0 +1,15 @@
+RED='\033[4;31m'
+NC='\033[0m'
+bold='\033[1;97m'
+
+printf "\n  ${bold}----------------------------${NC}\n"
+grep -m1 "Hardening index" /var/log/lynis.log
+printf "  ${bold}----------------------------${NC}\n\n"
+
+sed -n '/Warnings/,/Suggestions/p' /var/log/lynis.log | sed -e '$d'
+
+MaJ=$(grep ". \[PKGS-7392\]" /var/log/lynis.log)
+
+if [ "$MaJ" ];then echo -e "${RED}Veuillez à maintenir vos paquets à jours ! ${NC}";fi
+
+mesg n || true

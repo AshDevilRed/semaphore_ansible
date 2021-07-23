@@ -1,0 +1,38 @@
+---
+
+swap: 10
+
+httpd: "{% if ansible_distribution == 'Debian' %}apache2{% else %}httpd{% endif %}"
+
+apache_user: "{% if ansible_distribution == 'Debian' %}www-data{% else %}apache{% endif %}"
+
+php_Deb: "{{ PHP | string }}"
+
+php_Cent: "{{ PHP | string | regex_replace('\\.', '') }}"
+
+php_name: "{% if ansible_distribution == 'Debian' %}php{{ php_Deb }}-fpm{% else %}php-fpm{% endif %}"
+
+php_vers: "{% if ansible_distribution == 'Debian' %}{{ php_Deb }}{% else %}{{ php_Cent }}{% endif %}"
+
+redis: "{% if ansible_distribution == 'Debian' %}redis-server{% else %}redis{% endif %}"
+
+master_instance: "{% if mono_server is defined and mono_server == 'prod' or mediboard_master is defined and mediboard_master == 'prod' %}master{% elif mono_server is defined %}master_{{ mono_server }}{% elif mediboard_master is defined %}master_{{ mediboard_master }}{% endif %}"
+
+master_dir: "{{ master_path }}{{ master_instance }}"
+
+branche_master: "{% if mono_server is defined and mono_server == 'prod' or mediboard_master is defined and mediboard_master == 'prod' %}{{ branche_master_prod }}{% elif mono_server is defined and mono_server == 'qualif' or mediboard_master is defined and mediboard_master == 'qualif' %}{{ branche_master_qualif }}{% elif mono_server is defined and mono_server == 'formation' or mediboard_master is defined and mediboard_master == 'formation' %}{{ branche_master_formation }}{% endif %}"
+
+this_server_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+
+# instances: | 
+#   {% if instances_prod is defined and instances_qualif is defined and instances_formation is defined %}{{ instances_prod + instances_qualif + instances_formation }}
+#   {% elif instances_prod is defined and instances_qualif is not defined and instances_formation is not defined %}{{ instances_prod }}
+#   {% elif instances_prod is not defined and instances_qualif is defined and instances_formation is not defined %}{{ instances_qualif }}
+#   {% elif instances_prod is not defined and instances_qualif is not defined and instances_formation is defined %}{{ instances_formation }}
+#   {% elif instances_prod is defined and instances_qualif is defined and instances_formation is not defined %}{{ instances_prod + instances_qualif }}
+#   {% elif instances_prod is defined and instances_qualif is not defined and instances_formation is defined %}{{ instances_prod + instances_formation }}
+#   {% elif instances_prod is not defined and instances_qualif is defined and instances_formation is defined %}{{ instances_qualif + instances_formation }}
+#   {% endif %}
+
+
+### La majorité des variables globales sont dépendantes du client et sont donc disponibles dans le fichier de variable ~/hosts/client/vars/main.yml ###

@@ -1,0 +1,152 @@
+---
+################################## Gestion des Log Orchestrator ###########################################
+
+- name: Création du répértoire de log Orchestrator
+  become: yes
+  file:
+    path: /var/log/orchestrator
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Modification du service Orchestrator
+  become: yes
+  template:
+    src: templates/orchestrator.service.j2
+    dest: "/etc/systemd/system/orchestrator.service"
+    mode: '0644'
+  register: orch_service
+
+- name: Rechargement des "daemon" système
+  become: yes
+  command: systemctl daemon-reload
+  when: orch_service is changed
+
+################################## Configuration Orchestrator ###########################################
+
+- name: Ajout du fichier de configuration d'orchestrator (Debian)
+  become: yes
+  template:
+    src: templates/orchestrator.conf.json.j2
+    dest: /etc/orchestrator.conf.json
+    mode: '0640' #0644
+  register: orch_ready
+  notify: "Restart service Orchestrator"
+
+################################ Ajout des script / lien avec ProxySQL ###########################################
+
+
+- name: Ajout des scripts orchestrator (Debian)
+  become: yes
+  template:
+    src: templates/{{ item }}.j2
+    dest: /var/tmp/{{ item }}
+    mode: '0700'
+  loop: 
+    - prefailover.py
+    - postfailover.py
+    - ifDownPsql.py
+    - upOldMaster.py
+
+- name: COMMANDE | Read_only avant changement
+  become: yes
+  ignore_errors: yes
+  no_log: true
+  command: mysql -u root -p"{{mysql_root_passwd}}" -e "SET @@GLOBAL.read_only = ON;";
+  changed_when: true
+  when: orch_ready is changed
+
+- name: Creation des utilisateurs Orchestrator
+  become: yes
+  no_log: true
+  mysql_user:
+    login_user: "root"
+    login_password: "{{ mysql_root_passwd }}"
+    name: "{{ orchestrator.user }}"
+    password: "{{ orchestrator.password }}"
+    host: "{% if item == 'localhost' %}{{ item }}{% else %}{{ hostvars[item]['ansible_hostname'] }}{% endif %}"
+    state: present
+    priv: "*.*:SUPER,PROCESS,REPLICATION SLAVE,REPLICATION CLIENT,RELOAD/meta.*:ALL/mysql.slave_master_info:ALL/orchestrator.*:ALL"
+    sql_log_bin : no
+  with_items: 
+          - "{{ groups['dbservers'] }}"
+          - localhost
+  notify: "Restart service Orchestrator"
+
+# a mettre dans le rôle ProxySQL
+- name: Creation des utilisateurs Monitor ProxySQL
+  become: yes
+  no_log: true
+  mysql_user:
+    login_user: "root"
+    login_password: "{{ mysql_root_passwd }}"
+    name: "monitor"
+    password: "{{ psql.monitor.mdp}}"
+    host: "{{ hostvars[item]['ansible_hostname'] }}"
+    state: present
+    priv: "*.*:REPLICATION CLIENT/sys.*:SELECT"
+    sql_log_bin : no
+  with_items: 
+          - "{{ groups['webservers'] }}"
+
+# Modifier les droits + mdp en variable / A mettre dans le rôle ProxySQL
+- name: Creation des utilisateurs Mediboard
+  become: yes
+  no_log: true
+  mysql_user:
+    login_user: "root"
+    login_password: "{{ mysql_root_passwd }}"
+    name: "mb_user"
+    password: "mb_user"
+    host: "{{ hostvars[item]['ansible_hostname'] }}"
+    state: present
+    priv: "*.*:SUPER,PROCESS,REPLICATION SLAVE,REPLICATION CLIENT,RELOAD/meta.*:ALL/mysql.slave_master_info:ALL/orchestrator.*:ALL"
+    sql_log_bin : no
+  with_items: 
+          - "{{ groups['webservers'] }}"
+
+- name: Démarrage du service Orchestrator
+  become: yes
+  service: 
+    name: orchestrator
+    state: started
+
+- name: Découverte des hôtes Orchestrator
+  become: yes
+  command: "orchestrator-client -c discover -i {{ hostvars[item]['ansible_hostname'] }}"
+  loop: "{{ groups['dbservers'] }}"
+
+################################ Configuration supplémentaire ###########################################
+
+# - name: CRON | Découverte des hôtes Orchestrator chaque minute
+#   become: yes
+#   cron:
+#     name: "Discover"
+#     job: "orchestrator-client -c discover -i {{ hostvars[item]['ansible_hostname'] }}"
+#   loop: "{{ groups['dbservers'] }}"
+#   when: orch_ready is changed
+
+- name: Activation du service Orchestrator au démarrage
+  become: yes
+  service: 
+    name: orchestrator
+    enabled: yes
+
+- name: COMMANDE | Ajout des Alias pour chaque hôte
+  become: yes
+  ignore_errors: yes
+  no_log: true
+  command: mysql -u root -p"{{mysql_root_passwd}}" -e "SET sql_log_bin = 0; insert into orchestrator.cluster_alias_override values ('{{ hostvars[item]['ansible_hostname'] }}:3306', '{{ orch_alias }}'); SET sql_log_bin = 1;";
+  changed_when: true
+  with_items :
+          - "{{ groups['dbservers'] }}"
+  when: orch_ready is changed
+    
+- name: COMMANDE | Supprimer le read_only
+  become: yes
+  ignore_errors: yes
+  no_log: true
+  command: mysql -u root -p"{{mysql_root_passwd}}" -e "SET @@GLOBAL.read_only = OFF;";
+  changed_when: true
+  when: orch_ready is changed and mysql_slave_of is not defined

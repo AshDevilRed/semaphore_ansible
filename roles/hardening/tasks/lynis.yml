@@ -1,0 +1,174 @@
+---
+
+#################################### Avant installation ###########################################
+
+- name: Installation des paquets avant Lynis (Debian 10)
+  become: yes
+  apt:
+    name: "{{ lynis_Debian_preresquites }}"
+    state: latest
+  when: ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" )
+
+- name: Installation des paquets avant Lynis (RedHat Family)
+  become: yes
+  dnf:
+    name: "{{ lynis_RHEL_Family_preresquites }}"
+    state: latest
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" 
+
+######################### Téléchargement / Installation de Lynis ################################
+
+- name: Import de la clé GPG pour le dépôt Lynis (Debian)
+  become: yes
+  apt_key:
+    url: "{{ lynis.deb.key }}"
+    state: present
+  when: ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" )
+
+# - name: Import de la clé GPG pour le dépôt Lynis (RedHat Family)
+#   become: yes
+#   rpm_key:
+#     key: "{{ lynis.rpm.key }}"
+#     state: present
+#   when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" 
+
+- name: Ajout du dépot Lynis (Debian)
+  become: yes
+  apt_repository:
+    repo: "deb {{ lynis.deb.repo }} stable main"
+    state: present
+  when: ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" )
+
+# - name: Ajout du dépot Lynis (RedHat Family)
+#   become: yes
+#   dnf:
+#     name: "{{ lynis.rpm.repo }}"
+#     state: present
+#   when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" 
+
+- name: Ajout du dépot Lynis + Clé GPG (RHEL)
+  become: yes
+  yum_repository:
+    name: "Lynis"
+    description: "CISOfy Software - Lynis package"
+    baseurl: https://packages.cisofy.com/community/lynis/rpm/
+    gpgkey: https://packages.cisofy.com/keys/cisofy-software-rpms-public.key
+    gpgcheck: yes
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" 
+
+- name: Téléchargement de Lynis (Debian)
+  become: yes
+  apt: 
+    name: lynis
+    state: latest
+    update_cache: yes
+  when: ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" )
+
+- name: Téléchargement de Lynis (RHEL)
+  become: yes
+  yum:
+    name: lynis
+    state: latest
+    update_cache: yes
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" 
+
+################## Lancement de Lynis et ajout d'un Banner MOTD #######################
+
+- name: Création du group lynis
+  become: yes
+  group:
+    name: lynis
+    state: present
+
+- name: Ajout des administrateur au groupe lynis
+  become: yes
+  user:
+    name: "{{ item }}"
+    groups: "lynis"
+    append: yes
+  with_items: 
+    - "{{ lynis_autorized_user }}"
+    - "root"
+
+- name: Lancement de Lynis
+  become: yes
+  shell: "lynis audit system > /var/log/lynis.log && chown root:lynis /var/log/lynis.log && chmod 0640 /var/log/lynis.log"
+  register: test_lynis
+  when: lynis_first_try == "On" or lynis_first_try == "on"
+
+- name: Ajout d'un Cron Lynis
+  become: yes
+  cron:
+    name: "Lynis verif. Secu"
+    hour: "4"
+    user: root
+    job: "lynis audit system > /var/log/lynis.log && chown root:lynis /var/log/lynis.log && chmod 0640 /var/log/lynis.log"
+    cron_file: "lynis"
+
+- name: Suppression des lignes pré-éxistantes dans le profil root
+  become: yes
+  lineinfile:
+    path: "/root/.profile"
+    state: absent
+    regexp: "{{ oneline }}"
+  when: ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" )
+
+- name: Suppression des lignes pré-éxistantes dans le profil des administrateur
+  become: yes
+  lineinfile:
+    path: "/home/{{ item }}/.profile"
+    state: absent
+    regexp: "{{ oneline }}"
+  with_items: "{{ lynis_autorized_user }}"
+  when: ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" )
+
+- name: Ajout des lignes d'informations Lynis dans le profil des root
+  become: yes
+  blockinfile:
+    path: /root/.profile
+    block: "{{ lookup('file', '.profile.j2') }}"
+  when: ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" )
+
+- name: Ajout des lignes d'informations Lynis dans le profil des administrateur
+  become: yes
+  blockinfile:
+    path: /home/{{ item }}/.profile
+    block: "{{ lookup('file', '.profile.j2') }}"
+  register: lynis_user_test
+  with_items: "{{ lynis_autorized_user }}"
+  when: ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" )
+
+##
+
+- name: Suppression des lignes pré-éxistantes dans le profil root
+  become: yes
+  lineinfile:
+    path: "/root/.bash_profile"
+    state: absent
+    regexp: "{{ oneline }}"
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+
+- name: Suppression des lignes pré-éxistantes dans le profil des administrateur
+  become: yes
+  lineinfile:
+    path: "/home/{{ item }}/.bash_profile"
+    state: absent
+    regexp: "{{ oneline }}"
+  with_items: "{{ lynis_autorized_user }}"
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+
+- name: Ajout des lignes d'informations Lynis dans le profil des root
+  become: yes
+  blockinfile:
+    path: /root/.bash_profile
+    block: "{{ lookup('file', '.profile.j2') }}"
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+
+- name: Ajout des lignes d'informations Lynis dans le profil des administrateur
+  become: yes
+  blockinfile:
+    path: /home/{{ item }}/.bash_profile
+    block: "{{ lookup('file', '.profile.j2') }}"
+  register: lynis_user_test
+  with_items: "{{ lynis_autorized_user }}"
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"

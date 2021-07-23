@@ -1,0 +1,18 @@
+---
+
+- name: Installation de redis-sentinel (Debian)
+  become: yes
+  apt:
+    name: "{{ redis_install_deb }}"
+    state: latest
+  when: ansible_distribution == "Debian"
+
+- name: Installation de redis-server (RedHat Family)
+  become: yes
+  yum:
+    name: redis
+    state: latest
+  when: ansible_os_family == "RedHat"
+
+
+- include: conf.yml

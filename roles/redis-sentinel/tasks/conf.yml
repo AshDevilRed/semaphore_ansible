@@ -1,0 +1,121 @@
+---
+
+- name: Arrêt de redis-sentinel
+  become: yes
+  service:
+    name: redis-sentinel
+    state: stopped
+  when: 
+    - ansible_os_family == "RedHat"
+
+############### Configuration de Redis-sentinel #####################
+# à enlever ? Déjà dans redis-server
+- name: Création du répertoire de surcharge redis
+  become: yes
+  file:
+    path: "{{ redis_dir }}"
+    state: directory
+    mode: 0755
+
+- name: Configuration de redis (Debian)
+  become: yes
+  template:
+    src: templates/sentinel.conf.j2
+    dest: "{{ redis_sentinel_conf }}"
+    owner: redis
+    group: redis
+    mode: 0640
+  when: 
+    - ansible_distribution == "Debian"
+
+- name: Configuration de redis (RHEL)
+  become: yes
+  template:
+    src: templates/redis-sentinel.conf.j2
+    dest: "{{ redis_sentinel_conf }}"
+    owner: redis
+    group: redis
+    mode: 0640
+  when: 
+    - ansible_os_family == "RedHat"
+
+- name: Déployement de la rotation des logs Redis
+  become: yes
+  template:
+    src: templates/log_rotate.j2
+    dest: /etc/logrotate.d/{{ redis_logrotate }}
+
+- name: Vérification de la configuration sysctl (1)
+  become: yes
+  shell: grep "net.core.somaxconn" /etc/sysctl.conf | awk '{ print $3 }'
+  register: sysctl_var_1
+  when: ansible_distribution == "Debian"
+
+- name: Vérification de la configuration sysctl (2)
+  become: yes
+  shell: grep "vm.overcommit_memory" /etc/sysctl.conf | awk '{ print $3 }'
+  register: sysctl_var_2
+  when: ansible_distribution == "Debian"
+
+- name: Configuration sysctl (1)
+  become: yes
+  shell: echo 'net.core.somaxconn = 65535' >> /etc/sysctl.conf
+  when: 
+    - ansible_distribution == "Debian"
+    - sysctl_var_1.stdout != "65535"
+
+- name: Configuration sysctl (2)
+  become: yes
+  shell: echo 'vm.overcommit_memory = 1' >> /etc/sysctl.conf
+  when: 
+    - ansible_distribution == "Debian"
+    - sysctl_var_2.stdout != "1"
+
+############### Création/Lancement des services ######################
+
+- name: Activation de redis-server sur les Webservers (RedHat)
+  become: yes
+  service:
+    name: redis
+    state: started
+  when: 
+    - ansible_os_family == "RedHat"
+    - "'webservers' in group_names"
+
+- name: Désactivation de redis-server sur les Webservers (Debian)
+  become: yes
+  service:
+    name: redis-server
+    state: stopped
+  when: 
+    - ansible_distribution == "Debian"
+    - "'webservers' in group_names"
+
+- name: Désactivation de redis-server sur les Webservers (RedHat)
+  become: yes
+  service:
+    name: redis
+    state: stopped
+  when: 
+    - ansible_os_family == "RedHat"
+    - "'webservers' in group_names"
+
+- name: Création du service redis-sentinel (Debian)
+  become: yes
+  template:
+    src: templates/redis-sentinel.service.j2
+    dest: "/etc/systemd/system/redis-sentinel.service"
+  when: 
+    - ansible_distribution == "Debian"
+
+- name: Activation au démarrage de redis-sentinel
+  become: yes
+  service:
+    name: redis-sentinel
+    enabled: yes
+
+- name: Lancement du service redis-sentinel
+  become: yes
+  service:
+    name: redis-sentinel
+    state: started

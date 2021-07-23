@@ -1,0 +1,15 @@
+[Unit]
+Description=Redis Sentinel
+After=network.target
+
+[Service]
+Type=notify
+ExecStart=/usr/bin/redis-server /etc/redis/sentinel.conf --sentinel
+Restart=always
+User=redis
+Group=redis
+ReadWriteDirectories=/etc/redis
+
+
+[Install]
+WantedBy=multi-user.target

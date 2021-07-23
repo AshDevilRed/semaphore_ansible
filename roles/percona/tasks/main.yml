@@ -1,0 +1,95 @@
+---
+
+#################################### Avant installation ###########################################
+
+- name: Installation des paquets avant Percona (Debian 10)
+  become: yes
+  apt:
+    name: "{{ Percona_Debian_preresquites }}"
+    state: latest
+  when: ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" )
+
+- name: Installation des paquets avant Percona (RedHat Family)
+  become: yes
+  dnf:
+    name: "{{ Percona_RHEL_Family_preresquites }}"
+    state: latest
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" 
+
+#################################### Téléchargement / Installation de Percona ###########################################
+
+- name: Import de la clé GPG pour le dépôt Percona (RedHat Family)
+  become: yes
+  rpm_key:
+    key: "{{ Percona_key }}"
+    state: present
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" 
+
+- name: Téléchargement du dépot Percona (Debian 10)
+  become: yes
+  get_url:
+    url: "{{ Percona_deb_repo }}"
+    dest: /tmp/percona-release_latest.{{ ansible_lsb.codename }}_all.deb
+  when: ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" )
+
+- name: Téléchargement du dépot Percona (RedHat Family)
+  become: yes
+  dnf:
+    name: "{{ Percona_rpm_repo }}"
+    state: present
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" 
+
+- name: Installation du dépôt Percona (Debian 10)
+  become: yes
+  apt:
+    deb: "/tmp/percona-release_latest.{{ ansible_lsb.codename }}_all.deb"
+    state: present
+  when: ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" )
+
+- name: Désactivation du dépôt MySQL (RedHat Family)
+  become: yes
+  dnf:
+    name: mysql
+    state: absent
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" 
+
+- name: Activation du dépôt Percona
+  become: yes
+  command: "percona-release setup -y {{ percona_repo_version }} && percona-release enable tools release"
+  changed_when: true
+
+- name: Installation de Percona (Debian 10)
+  become: yes
+  apt:
+    name: "{{ Percona_Debian }}"
+    state: present
+    update_cache: yes
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  when: ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" )
+
+- name: Installation de Percona (RHEL Family)
+  become: yes
+  dnf:
+    name: "{{ Percona_RHEL_Family }}"
+    state: latest
+    update_cache: yes
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8" 
+
+- name: Suppression du fichier de dépôt Percona (Debian 10)
+  become: yes
+  file:
+    path: "/tmp/percona-release_latest.{{ ansible_lsb.codename }}_all.deb"
+    state: absent
+  when: ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" )
+
+- name: Création du répertoire de données SQL
+  become: yes
+  file:
+    path: "{{ datadir }}"
+    state: directory
+    owner: "mysql"
+    group: "mysql"
+    mode: '0700'
+
+- include: conf.yml

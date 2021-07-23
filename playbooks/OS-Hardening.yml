@@ -1,0 +1,8 @@
+---
+
+- name: Ajout d'une couche de sécurité
+  hosts: all
+  gather_facts: no
+  roles:
+    - { role: hardening, when execution_lock is not defined }
+

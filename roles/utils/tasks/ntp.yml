@@ -1,0 +1,66 @@
+---
+
+- name: Installation de ntpdate sur Debian (option)
+  become: yes
+  apt:
+    name: "{{ NtpClient_Packages }}"
+    state: latest
+  when: use_chrony is not defined and ( use_ntpdate is defined and use_ntpdate != 0 ) and ansible_distribution == "Debian"
+
+- name: Installation de ntpdate sur CentOS (option)
+  become: yes
+  yum:
+    name: "{{ NtpClient_Packages }}"
+    state: latest 
+  when: use_chrony is not defined and ( use_ntpdate is defined and use_ntpdate != 0 ) and ansible_distribution == "CentOS"
+
+- name: Désactivation de ntp (option)
+  become: yes
+  service:
+    name: ntp
+    state: stopped
+  when: use_chrony is not defined and ( use_ntpdate is defined and use_ntpdate != 0 ) and ansible_distribution == "Debian"
+
+- name: Synchronisation ntpdate (option)
+  become: yes
+  command: ntpdate 0.fr.pool.ntp.org
+  when: use_chrony is not defined and ( use_ntpdate is defined and use_ntpdate != 0 )
+
+- name: Désactivation de ntp (chrony)
+  become: yes
+  ignore_errors: yes
+  service:
+    name: ntp
+    state: stopped
+    enabled: no
+  when: use_chrony is defined
+
+- name: Suppression de ntp si on demande Chrony (Debian)
+  become: yes
+  apt:
+    name: "{{ NtpClient_Packages }}"
+    state: absent
+  when: use_chrony is defined and ansible_distribution == "Debian"
+
+- name: Installation de Chrony (Debian)
+  become: yes
+  apt:
+    name: "{{ Chrony_Package }}"
+    state: latest
+  when: use_chrony is defined and ansible_distribution == "Debian"
+
+- name: Installation de Chrony (CentOS)
+  become: yes
+  yum:
+    name: "{{ Chrony_Package }}"
+    state: latest
+  when: use_chrony is defined and ansible_distribution == "CentOS"
+
+- name: Démarrage de Chrony & activation au boot du serveur
+  become: yes
+  service:
+    name: chrony
+    state: started
+    enabled: yes
+    masked: no
+  when: use_chrony is defined

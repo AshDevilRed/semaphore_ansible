@@ -1,0 +1,86 @@
+- name: Installation du paquet apt-transport-https requis pour l'installation du répo Sury (Debian)
+  become: yes
+  apt:
+    name: "apt-transport-https"
+    state: latest
+    update_cache: yes
+  when: ansible_distribution == "Debian"
+
+- name: Installation de la clé publique pour le dépôt Sury (Debian)
+  become: yes
+  apt_key:
+    url: "{{ Sury_key }}"
+    state: present
+  retries: 5
+  delay: 3
+  when: ansible_distribution == "Debian"
+
+- name: Installation du dépôt Sury (Debian)
+  become: yes
+  apt_repository:
+    repo: "{{ Sury_repo }}"
+    state: present
+  when: ansible_distribution == "Debian"
+
+- name: EPEL GPG key (RedHat Family)
+  become: yes
+  rpm_key:
+   key: "{{ EPEL_RedHat8_key }}"
+   state: present
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+
+- name: Installation du dépôt EPEL (RedHat Family)
+  become: yes
+  yum:
+    name: "{{ EPEL_rpm }}"
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Import de la clé GPG pour le dépôt remi (CentOS >= 8)
+  become: yes
+  rpm_key:
+    key: "{{ Remi_key_rhel8 }}"
+    state: present
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version >= "8"
+
+- name: Import de la clé GPG pour le dépôt remi (CentOS <=7)
+  become: yes
+  rpm_key:
+    key: "{{ Remi_key_rhel7 }}"
+    state: present
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version <= "7"
+
+- name: Activation du dépôt remi-php{{ php_vers }} (CentOS 7)
+  become: yes
+  yum_repository:
+    name: remi-php{{ php_vers }}
+    description: Remi's PHP {{ php_vers }} RPM repository for Enterprise Linux {{ ansible_distribution_major_version }} - {{ ansible_architecture }}
+    baseurl: "{{ Remi_repo }}"
+    mirrorlist: "{{ Remi_mirror }}"
+    state: present
+    enabled: yes
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+- name: Activation du dépôt remi-safe (CentOS 7)
+  become: yes
+  yum_repository:
+    name: remi-safe
+    description: Safe Remi's RPM repository for Enterprise Linux {{ ansible_distribution_major_version }} - {{ ansible_architecture }}
+    baseurl: "{{ Remi_safe_repo }}"
+    mirrorlist: "{{ Remi_safe_mirror }}"
+    state: present
+    enabled: yes
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+  
+- name: Activation du dépôt remi-php{{ php_vers }} (CentOS >= 8)
+  become: yes
+  dnf:
+    name: "{{ Remi_CentOS8_rpm_repo }}"
+    state: present
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version >= "8"
+
+- name: Activation du dépôt CodeBuilders (RedHat)
+  become: yes
+  rhsm_repository:
+    name: codeready-builder-for-rhel-{{ ansible_distribution_major_version }}-x86_64-rpms
+  when: ansible_distribution == "RedHat"

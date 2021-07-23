@@ -1,0 +1,7 @@
+---
+
+- name: Installation de polices non standard
+  hosts: webservers:monoservers
+  gather_facts: yes
+  roles:
+    - { role: fonts_manager, when: execution_lock is not defined }

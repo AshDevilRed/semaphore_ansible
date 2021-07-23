@@ -1,0 +1,33 @@
+---
+
+- name: php-restart
+  become: yes
+  service:
+    name: "{{ php_name }}"
+    state: restarted
+
+- name: httpd-restart
+  become: yes
+  service:
+    name: "{{ httpd }}"
+    state: restarted
+
+- name: mysql-restart
+  become: yes
+  service:
+    name: "mariadb"
+    state: restarted
+
+- name: redis-restart
+  become: yes
+  service:
+    name: "{{ redis }}"
+    state: restarted
+
+- name: swapoff
+  become: yes
+  command: swapoff -a
+
+- name: swapon
+  become: yes
+  command: swapon -a

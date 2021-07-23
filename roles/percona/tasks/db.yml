@@ -1,0 +1,126 @@
+---
+
+############################## Modification des utilisateurs Root ####################################
+
+- name: "Vérification de nouvelle installation Percona"
+  become: yes
+  no_log: true
+  stat:
+    path: "/root/.ansible.percona.install"
+  register: root_pass_changed
+
+- name: "Configuration des accès Root (RedHat Family)"
+  become: yes
+  no_log: true
+  block:
+    - name: "Récupération du mot de passe temporaire (RedHat Family)"
+      shell: grep "temporary password" /var/log/mysql/error.log | awk '{ print $13 }'
+      register: mysql_temporary_password
+    
+    - name: "Diminution des contraintes de la politique de mot de passe (RedHat Family)"
+      become: yes
+      shell: 'mysql -e "SET @@GLOBAL.read_only = ON;SET GLOBAL validate_password.policy=LOW;SET GLOBAL validate_password.special_char_count=0;SET GLOBAL validate_password.mixed_case_count=0;" --connect-expired-password -uroot -p"{{ mysql_temporary_password.stdout }}"'
+
+    - name: "Modification du pass Root avec le pass temporaire (RedHat Family)"
+      become: yes
+      shell: 'mysql -e "SET sql_log_bin = 0;SET PASSWORD = ''{{ mysql_root_passwd }}'';" --connect-expired-password -uroot -p"{{ mysql_temporary_password.stdout }}"'
+
+    - name: "Suppression de la politique de mot de passe (RedHat Family)"
+      become: yes
+      shell: 'mysql -e "SET sql_log_bin = 1;UNINSTALL COMPONENT ''file://component_validate_password'';" --connect-expired-password -uroot -p"{{ mysql_root_passwd }}"'
+
+  when:
+    - ansible_distribution_major_version == "8"
+    - ansible_os_family == "RedHat"
+    - root_pass_changed.stat.exists == False
+
+- name: COMMANDE | Read_only avant changement
+  become: yes
+  command: mysql -u root -p"{{mysql_root_passwd}}" -e "SET @@GLOBAL.read_only = ON;";
+  changed_when: true
+  when: 
+    - ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" )
+    - root_pass_changed.stat.exists == False
+
+- name: Mise à jour du mdp root pour tout les comptes root (Debian 10)
+  become: yes
+  ignore_errors: yes
+  no_log: true
+  mysql_user:
+    login_user: "root"
+    name: "root" 
+    host: "{{ item }}"
+    password: "{{ mysql_root_passwd }}"
+    priv: "*.*:ALL,GRANT"
+    check_implicit_admin: yes
+    sql_log_bin : no
+  with_items:
+          - "{{ ansible_hostname }}"
+          - "127.0.0.1"
+          - "localhost"
+  when: 
+    - ( ansible_distribution == "Debian" and ansible_distribution_major_version == "10" )
+    - root_pass_changed.stat.exists == False
+
+- name: Mise à jour du mdp root pour tout les comptes root (RedHat Family)
+  become: yes
+  ignore_errors: yes
+  no_log: true
+  mysql_user:
+    login_user: "root"
+    login_password: "{{ mysql_root_passwd }}"
+    name: "root"
+    host: "{{ item }}"
+    password: "{{ mysql_root_passwd }}"
+    priv: "*.*:ALL,GRANT"
+    state: present
+    check_implicit_admin: yes
+    sql_log_bin : no
+  with_items:
+          - "{{ ansible_hostname }}"
+          - "127.0.0.1"
+          - "localhost"
+  when: 
+    - ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
+    - root_pass_changed.stat.exists == False
+
+- name: Mise à jour du mdp root pour tout les comptes root (protection de rejeu) (RedHat Family)
+  become: yes
+  ignore_errors: yes
+  no_log: true
+  mysql_user:
+    login_user: root
+    login_password: "{{ mysql_root_passwd }}"  
+    name: root 
+    host: "{{ item }}"
+    password: "{{ mysql_root_passwd}}"
+    state: present
+    check_implicit_admin: yes
+    sql_log_bin : no
+  with_items:
+          - "{{ ansible_hostname }}"
+          - "127.0.0.1"
+          - "localhost"
+
+- name: "Copie du fichier .ansible.percona.install dans le dossier /root"
+  become: yes
+  no_log: true
+  template:
+    src: root-my-cnf.j2
+    dest: /root/.ansible.percona.install
+    owner: root
+    group: root
+    mode: 0600
+
+- name: Suppression des utilisateurs anonymes
+  become: yes
+  no_log: true
+  mysql_user:
+    login_user: "root"
+    login_password: "{{ mysql_root_passwd }}"
+    name: ''
+    host_all: yes
+    state: absent
+    sql_log_bin : no
+
+- include: replication-GTID.yml

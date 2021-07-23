@@ -1,0 +1,16 @@
+---
+
+- name: Création d'utilisateur système
+  hosts: all
+  gather_facts: yes
+  roles:
+    - { role: users, when: execution_lock is not defined }
+
+- name: Mise en place d'un service SSHD
+  hosts: webservers:monoservers
+  gather_facts: yes
+  tasks:
+    - import_role:
+        name: users
+        tasks_from: sftp.yml
+      when: execution_lock is not defined and sftp_server is defined and sftp_server == 'yes'

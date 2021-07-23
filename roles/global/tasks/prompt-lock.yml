@@ -1,0 +1,11 @@
+---
+
+- name: prompt
+  pause:
+    prompt: "{{ prompt_message }}"
+    echo: yes
+  register: prompt_input
+
+- name: Valeur du prompt
+  debug:
+    msg: "{{ prompt_input.user_input }}"
