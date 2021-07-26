@@ -81,15 +81,6 @@
     name: pexpect
     state: latest
 
-- name: Création du répertoire de log Mediboard
-  become: yes
-  file:
-    path: '/var/log/mediboard'
-    state: directory
-    owner: "{{ mediboard_user }}"
-    group: "root"
-    mode: '0755'
-
 - name: Récupération de la version courante d'Atop
   shell: "atop -V | cut -d ' ' -f2"
   register: atop_version
