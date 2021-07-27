@@ -47,4 +47,4 @@ droit_base_med: "{% if base_medicamenteuse == 'bcb' %}/bcb1.*:ALL/bcb2.*:ALL{% e
 ############################ Variables à mettre dans le Vault ######################################################
 
 rep_passwd: root
-mysql_root_passwd: eFDVv8f54s56
+mysql_root_passwd: gf6543e54
