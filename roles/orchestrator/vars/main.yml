@@ -63,7 +63,7 @@ orch_alias: dbservers
 ############################ Variables à mettre dans le Vault ######################################################
 
 rep_passwd: root
-mysql_root_passwd: eFDVv8f54s56
+mysql_root_passwd: gf6543e54
 
 # psql:
 #     mdp:
