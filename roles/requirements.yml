@@ -1,4 +1,5 @@
 ---
 
-- name: ansible-oracle-instantclient
-  src: https://github.com/azavea/ansible-oracle-instantclient
+collections:
+  - name: community.mysql
+  - name: community.crypto
